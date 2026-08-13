@@ -11,10 +11,6 @@
     var t = localStorage.getItem('pac-theme') || 'blue';
     document.documentElement.setAttribute('data-theme', t);
   }catch(e){ document.documentElement.setAttribute('data-theme','blue'); }
-  try{
-    var d = localStorage.getItem('pac-device');
-    if(d) document.documentElement.setAttribute('data-device', d);
-  }catch(e){}
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -124,6 +120,7 @@ a{color:inherit;text-decoration:none;}
 ::-webkit-scrollbar-thumb{background:var(--ink-faint);opacity:.5;border-radius:8px;}
 ::-webkit-scrollbar-track{background:transparent;}
 [hidden]{display:none !important;}
+button:focus-visible, a:focus-visible, .sb-link:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
 * { transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease; }
 
 /* ---------- BOOT ---------- */
@@ -140,7 +137,7 @@ a{color:inherit;text-decoration:none;}
 .app-watermark img{width:38vw;max-width:520px;min-width:240px;}
 :root[data-theme="dark"] .app-watermark{opacity:.07;mix-blend-mode:screen;filter:grayscale(1) invert(1) brightness(1.3);}
 #app{position:relative;z-index:1;}
-#authScreen,#deviceScreen{position:relative;z-index:1;}
+#authScreen{position:relative;z-index:1;}
 
 /* ---------- AUTH ---------- */
 #authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
@@ -179,17 +176,18 @@ a{color:inherit;text-decoration:none;}
 
 /* ---------- APP SHELL ---------- */
 #app{display:flex;min-height:100vh;}
-.sidebar{width:250px;flex:none;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border-right:1px solid var(--line);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;}
-.sb-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 20px;}
+.sidebar{width:264px;flex:none;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border-right:1px solid var(--line);display:flex;flex-direction:column;padding:22px 16px;position:sticky;top:0;height:100vh;box-shadow:6px 0 24px -18px rgba(20,30,60,0.25);}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:6px 8px 22px;margin-bottom:6px;border-bottom:1px solid var(--line-soft);}
 .sb-brand .mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-2));flex:none;position:relative;box-shadow:0 8px 18px -6px rgba(46,86,214,0.5);overflow:hidden;display:flex;align-items:center;justify-content:center;padding:4px;}
 .sb-brand .mark img{width:100%;height:100%;object-fit:contain;border-radius:5px;background:#fff;padding:2px;}
 .sb-brand-txt{font-family:'Manrope',sans-serif;font-weight:800;font-size:15.5px;}
 .sb-brand-sub{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
 .sb-section{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-faint);font-weight:700;margin:16px 10px 8px;}
 .sb-nav{display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto;}
-.sb-link{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:11px;color:var(--ink-soft);font-size:13.8px;font-weight:600;cursor:pointer;position:relative;}
-.sb-link:hover{background:rgba(255,255,255,0.04);color:var(--ink);}
+.sb-link{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:11px;color:var(--ink-soft);font-size:13.8px;font-weight:600;cursor:pointer;position:relative;transition:background .15s ease,color .15s ease,transform .15s ease;}
+.sb-link:hover{background:rgba(255,255,255,0.05);color:var(--ink);transform:translateX(1px);}
 .sb-link.active{background:linear-gradient(135deg, rgba(62,123,250,0.18), rgba(124,92,250,0.14));color:#fff;box-shadow:inset 0 0 0 1px rgba(62,123,250,0.35);}
+.sb-link.active:before{content:'';position:absolute;left:-16px;top:50%;transform:translateY(-50%);width:3px;height:20px;border-radius:0 4px 4px 0;background:linear-gradient(180deg,var(--accent),var(--accent-2));}
 .sb-link .ic{width:18px;height:18px;flex:none;display:flex;align-items:center;justify-content:center;opacity:.9;}
 .sb-link .ic svg{width:18px;height:18px;display:block;}
 .field-error svg{width:15px;height:15px;flex:none;}
@@ -203,78 +201,15 @@ a{color:inherit;text-decoration:none;}
 .sb-user-role{font-size:11px;color:var(--ink-faint);}
 .sb-signout{width:100%;margin-top:8px;}
 
-/* ---------- MOBILE / TABLET NAV (hamburger + off-canvas drawer) ---------- */
-.nav-toggle{
-  display:none; position:fixed; top:14px; left:14px; z-index:950;
-  width:42px; height:42px; border-radius:12px;
-  background:var(--card); border:1.5px solid var(--line);
-  align-items:center; justify-content:center;
-  color:var(--ink); box-shadow:var(--shadow-sm);
-  cursor:pointer; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .25s ease;
-}
-.nav-toggle:hover{border-color:var(--accent); box-shadow:var(--shadow);}
-.nav-toggle:active{transform:scale(0.92);}
-.nav-toggle svg{width:19px;height:19px;display:block;transition:transform .25s cubic-bezier(.2,.8,.2,1);}
-.sidebar-scrim{
-  position:fixed; inset:0; z-index:899;
-  background:rgba(8,12,24,0.45); backdrop-filter:blur(2px);
-  opacity:0; visibility:hidden; pointer-events:none;
-  transition:opacity .28s ease, visibility .28s;
-}
-.sidebar-scrim.show{opacity:1; visibility:visible; pointer-events:auto;}
+/* ---------- SIDEBAR NAV ----------
+   Always rendered as a normal, permanently-visible left column —
+   this workspace is a desktop application and the layout no longer
+   collapses into an off-canvas drawer at any width. */
 
-@media(max-width:880px){
-  .nav-toggle{display:flex;}
-  .sidebar{
-    position:fixed; top:0; left:0; z-index:900;
-    width:270px; max-width:82vw; height:100vh;
-    flex-direction:column; overflow-x:hidden; overflow-y:auto;
-    transform:translateX(-100%);
-    transition:transform .32s cubic-bezier(.2,.85,.25,1);
-    box-shadow:0 0 0 rgba(0,0,0,0);
-    padding:20px 14px;
-    background:var(--card);
-    border-right:1px solid var(--line);
-  }
-  .sidebar.nav-open{transform:translateX(0); box-shadow:24px 0 60px -20px rgba(0,0,0,0.45);}
-  .sb-nav{flex-direction:column;}
-  .sb-section,.sb-foot,.sb-brand-sub{display:flex;}
-  .sb-section{display:block;}
-  .sb-foot{display:block;}
-  .sb-brand-sub{display:block;}
-  .main{padding:70px 18px 40px;}
-  .grid-2{grid-template-columns:1fr;}
-}
-:root[data-device="phone"] .nav-toggle,
-:root[data-device="tablet"] .nav-toggle{display:flex;}
-:root[data-device="phone"] .sidebar,
-:root[data-device="tablet"] .sidebar{
-  position:fixed; top:0; left:0; z-index:900;
-  width:270px; max-width:82vw; height:100vh;
-  flex-direction:column; overflow-x:hidden; overflow-y:auto;
-  transform:translateX(-100%);
-  transition:transform .32s cubic-bezier(.2,.85,.25,1);
-  padding:20px 14px;
-  background:var(--card);
-  border-right:1px solid var(--line);
-}
-:root[data-device="phone"] .sidebar.nav-open,
-:root[data-device="tablet"] .sidebar.nav-open{transform:translateX(0); box-shadow:24px 0 60px -20px rgba(0,0,0,0.45);}
-:root[data-device="phone"] .sb-nav,
-:root[data-device="tablet"] .sb-nav{flex-direction:column;}
-:root[data-device="phone"] .sb-section,
-:root[data-device="phone"] .sb-foot,
-:root[data-device="phone"] .sb-brand-sub,
-:root[data-device="tablet"] .sb-section,
-:root[data-device="tablet"] .sb-foot,
-:root[data-device="tablet"] .sb-brand-sub{display:block;}
-:root[data-device="phone"] .main{padding:66px 16px 34px;}
-:root[data-device="tablet"] .main{padding:70px 22px 40px;}
-
-.main{flex:1;min-width:0;padding:26px 34px 60px;max-width:1320px;}
-.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
+.main{flex:1;min-width:0;padding:30px 40px 60px;max-width:1360px;}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:26px;padding-bottom:18px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;}
 .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);font-weight:800;margin-bottom:6px;}
-.topbar h2{font-size:23px;}
+.topbar h2{font-size:24px;letter-spacing:-0.015em;}
 .topbar-sub{color:var(--ink-soft);font-size:13.5px;margin-top:6px;}
 .topbar-actions{display:flex;gap:10px;flex-wrap:wrap;}
 
@@ -417,34 +352,6 @@ tr.clickable:hover td{background:rgba(255,255,255,0.025);}
 .progress-ring .track{fill:none;stroke:rgba(255,255,255,0.08);stroke-width:6;}
 .progress-ring .fill{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .6s ease;}
 
-@media(max-width:880px){
-  #app{flex-direction:column;}
-  .main{padding:70px 18px 40px;}
-  .grid-2{grid-template-columns:1fr;}
-  .stat-grid{grid-template-columns:repeat(2,1fr);}
-  .topbar h2{font-size:19px;}
-  .theme-toggle{top:10px;right:10px;width:40px;height:40px;}
-  .fab-create{top:56px;right:10px;}
-  .notif-panel{width:92vw;right:-6px;}
-}
-
-/* ---------- DEVICE-FORCED LAYOUTS ----------
-   Chosen once on the Device Selection screen (and changeable later from
-   Settings). Applies the same "off-canvas drawer + hamburger" treatment as
-   the width-based mobile media query above, but deliberately, regardless of
-   the actual browser window size. Desktop (the default) gets no overrides. */
-:root[data-device="phone"] #app{flex-direction:column;}
-:root[data-device="phone"] .stat-grid{grid-template-columns:repeat(2,1fr);}
-:root[data-device="phone"] .topbar h2{font-size:19px;}
-:root[data-device="phone"] .theme-toggle{top:10px;right:10px;width:40px;height:40px;}
-:root[data-device="phone"] .fab-create{top:56px;right:10px;}
-:root[data-device="phone"] .notif-panel{width:92vw;right:-6px;}
-
-:root[data-device="tablet"] .stat-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
-:root[data-device="tablet"] .grid-2{grid-template-columns:1fr;}
-:root[data-device="tablet"] .theme-toggle{top:10px;right:10px;width:40px;height:40px;}
-:root[data-device="tablet"] .fab-create{top:56px;right:10px;}
-
 /* ---------- THEME TOGGLE ---------- */
 .theme-toggle{
   position:fixed; top:16px; right:16px; z-index:500;
@@ -457,26 +364,6 @@ tr.clickable:hover td{background:rgba(255,255,255,0.025);}
 .theme-toggle:hover{ transform:translateY(-2px) rotate(-8deg); box-shadow:var(--shadow); border-color:var(--accent); }
 .theme-toggle:active{ transform:translateY(0) scale(0.94); }
 .theme-toggle svg{width:20px;height:20px;display:block;}
-@media(max-width:880px){
-  .theme-toggle{ top:10px; right:10px; width:40px; height:40px; }
-  .fab-create{ top:56px; right:10px; }
-}
-
-/* ---------- DEVICE SELECTION SCREEN ---------- */
-#deviceScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-.device-card-wrap{width:100%;max-width:560px;background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));border:1px solid var(--line);border-radius:20px;padding:38px 34px;box-shadow:var(--shadow);backdrop-filter:blur(20px);animation:riseIn .5s cubic-bezier(.2,.8,.2,1);}
-.device-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px;}
-.device-option{display:flex;flex-direction:column;align-items:center;gap:12px;padding:24px 12px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface-2);cursor:pointer;text-align:center;}
-.device-option:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:var(--shadow-sm);}
-.device-option .device-ic{width:44px;height:44px;color:var(--accent);}
-.device-option .device-ic svg{width:100%;height:100%;display:block;}
-.device-option-name{font-weight:700;font-size:14px;color:var(--ink);}
-.device-option-sub{font-size:11.5px;color:var(--ink-faint);}
-@media(max-width:520px){
-  .device-grid{grid-template-columns:1fr;}
-}
-.swatch-card .device-ic-sm{width:22px;height:22px;color:var(--accent);flex:none;}
-.swatch-card .device-ic-sm svg{width:100%;height:100%;display:block;}
 
 /* ---------- NOTIFICATIONS ---------- */
 .notif-btn{position:relative;width:38px;height:38px;border-radius:50%;background:var(--surface-2);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-soft);flex:none;}
@@ -521,11 +408,6 @@ tr.clickable:hover td{background:rgba(255,255,255,0.025);}
   <span id="themeIcon"></span>
 </button>
 
-<button class="nav-toggle" id="navToggle" onclick="toggleSidebar()" title="Menu" aria-label="Toggle navigation" style="display:none;">
-  <span id="navToggleIcon"></span>
-</button>
-<div class="sidebar-scrim" id="sidebarScrim" onclick="closeSidebar()"></div>
-
 <div id="notifWrap" style="display:none;position:fixed;top:16px;right:72px;z-index:500;">
   <button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()" title="Notifications" aria-label="Notifications">
     <span id="notifBtnIcon"></span>
@@ -540,8 +422,6 @@ tr.clickable:hover td{background:rgba(255,255,255,0.025);}
   <div class="boot-mark"><img id="bootLogoImg" alt="PAC"></div>
   <div class="boot-text">Loading PAC Workspace…</div>
 </div>
-
-<div id="deviceScreen" style="display:none;"></div>
 
 <div id="authScreen" style="display:none;">
   <div class="auth-card" id="authCard"></div>
@@ -606,30 +486,8 @@ tr.clickable:hover td{background:rgba(255,255,255,0.025);}
     window.setThemeIcon();
   };
 
-  // ---------- Mobile/tablet nav drawer (hamburger ⇄ close) ----------
-  window.setNavToggleIcon = function(){
-    var open = document.querySelector('.sidebar')?.classList.contains('nav-open');
-    var el = document.getElementById('navToggleIcon');
-    if(el) el.innerHTML = window.PAC_ICONS[open ? 'close' : 'menu'];
-  };
-  window.toggleSidebar = function(){
-    var sb = document.querySelector('.sidebar');
-    var scrim = document.getElementById('sidebarScrim');
-    if(!sb) return;
-    var open = sb.classList.toggle('nav-open');
-    if(scrim) scrim.classList.toggle('show', open);
-    window.setNavToggleIcon();
-  };
-  window.closeSidebar = function(){
-    var sb = document.querySelector('.sidebar');
-    var scrim = document.getElementById('sidebarScrim');
-    if(sb) sb.classList.remove('nav-open');
-    if(scrim) scrim.classList.remove('show');
-    window.setNavToggleIcon();
-  };
   document.addEventListener('DOMContentLoaded', function(){
     window.setThemeIcon();
-    window.setNavToggleIcon();
   });
 })();
 </script>
@@ -1106,64 +964,6 @@ function unbindNotifications(){
 }
 
 /* ============================================================
-   DEVICE SELECTION (before login)
-   ============================================================ */
-const DEVICE_KEYS = ['desktop','tablet','phone'];
-function getStoredDevice(){
-  try{ const d = localStorage.getItem('pac-device'); return DEVICE_KEYS.includes(d) ? d : null; }catch(e){ return null; }
-}
-let deviceGateResolved = !!getStoredDevice();
-let pendingAuthUser; // holds the Firebase user until the device gate is resolved
-
-function applyDevice(device){
-  document.documentElement.setAttribute('data-device', device);
-  try{ localStorage.setItem('pac-device', device); }catch(e){}
-}
-
-function renderDeviceScreen(){
-  $('app').style.display='none';
-  $('authScreen').style.display='none';
-  $('deviceScreen').style.display='flex';
-  const options = [
-    {key:'desktop', label:'Computer', sub:'Full desktop layout with a fixed side menu.'},
-    {key:'tablet',  label:'Tablet',   sub:'A compact layout tuned for medium screens.'},
-    {key:'phone',   label:'Phone',    sub:'A stacked layout built for one-handed use.'},
-  ];
-  $('deviceScreen').innerHTML = `
-    <div class="device-card-wrap">
-      <div class="brand"><div class="mark"><img src="${window.PAC_LOGO}" alt="PAC"></div><h1>PAC Workspace</h1></div>
-      <div class="brand-sub">One quick step before you sign in</div>
-      <div class="auth-sub">Which device are you using right now? This adjusts spacing and layout to fit it — you can always change it later from Settings.</div>
-      <div class="device-grid">
-        ${options.map(o=>`
-          <div class="device-option" onclick="chooseDevice('${o.key}')">
-            <div class="device-ic">${PAC_ICONS[o.key]}</div>
-            <div><div class="device-option-name">${o.label}</div><div class="device-option-sub">${o.sub}</div></div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-window.chooseDevice = function(device){
-  if(!DEVICE_KEYS.includes(device)) return;
-  applyDevice(device);
-  deviceGateResolved = true;
-  $('deviceScreen').style.display='none';
-  handleAuthUser(pendingAuthUser);
-};
-
-// Lets people change the layout later without re-doing the whole gate
-// (surfaced as a panel in Settings).
-window.setDevice = function(device){
-  if(!DEVICE_KEYS.includes(device)) return;
-  applyDevice(device);
-  if(state.route==='settings') renderApp();
-  toast('Layout switched to '+device+'.');
-};
-
-/* ============================================================
    AUTH STATE
    ============================================================ */
 async function handleAuthUser(user){
@@ -1171,9 +971,7 @@ async function handleAuthUser(user){
     state.fbUser=null; state.profile=null; state.listenersBound=false; boundCustomerNodes.clear();
     unbindNotifications();
     $('app').style.display='none';
-    $('deviceScreen').style.display='none';
     $('authScreen').style.display='flex';
-    $('navToggle').style.display='none';
     renderAuth();
     return;
   }
@@ -1190,9 +988,7 @@ async function handleAuthUser(user){
     }
     state.fbUser = user;
     state.profile = { ...profile, uid:user.uid };
-    $('deviceScreen').style.display='none';
     $('authScreen').style.display='none';
-    $('navToggle').style.display='';
     $('app').style.display='flex';
     state.route = defaultRouteFor(state.profile.role);
     applyThemeFromProfile(profile.themePreference); // ⬅️ الثيم المحفوظ بتاع اليوزر ده
@@ -1207,11 +1003,6 @@ async function handleAuthUser(user){
 onAuthStateChanged(auth, async (user)=>{
   if(bootstrapping) return; // تجاهل أي حدث تسجيل دخول لحد ما نخلص كتابة بروفايل الأدمن
   $('bootScreen').style.display='none';
-  pendingAuthUser = user;
-  if(!deviceGateResolved){
-    renderDeviceScreen();
-    return; // handleAuthUser() runs once chooseDevice() resolves the gate
-  }
   await handleAuthUser(user);
 });
 
@@ -1276,10 +1067,6 @@ window.goto = function(route, params){
   state.route = route;
   state.routeParams = params || {};
   renderApp();
-  // renderApp() rebuilds the sidebar from scratch (so it re-opens closed by
-  // default) — just make sure the scrim/hamburger icon agree with that.
-  document.getElementById('sidebarScrim')?.classList.remove('show');
-  window.setNavToggleIcon && window.setNavToggleIcon();
   window.scrollTo({top:0,behavior:'smooth'});
 };
 
