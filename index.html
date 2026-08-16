@@ -1507,21 +1507,13 @@ function viewSettings(){
 /* ============================================================
    CUSTOMERS
    ============================================================ */
-const SYSTEM_OPTIONS = [
-  {key:'sap', label:'SAP'},
-  {key:'portal', label:'Portal'},
-  {key:'old', label:'Old System (المنظومة القديمة)'},
-  {key:'none', label:'None'},
-];
-const SYSTEM_LABELS = { sap:'SAP', portal:'Portal', old:'Old System (المنظومة القديمة)', none:'None' };
-
 // Extended accounting/compliance fields for the customer record — sourced
 // from the office's client master sheet (قاعدة العملاء). Purely additional
 // data-entry rows on the customer creation/edit form; nothing else in the
 // app reads or depends on these yet. Stored under customer.accountingInfo.
 const CUSTOMER_EXTRA_FIELD_GROUPS = [
   { title:'Registration & Tax Office (تسجيل ضريبي وسجل تجاري)', fields:[
-    {key:'accountant', label:'Accountant (المحاسب)', type:'text'},
+    {key:'documentResponsible', label:'Document responsible (مسؤول الملفات)', type:'text'},
     {key:'clientCode', label:'Client code (كود العميل)', type:'text'},
     {key:'nationalId', label:'National ID (الرقم القومي)', type:'text'},
     {key:'taxOffice', label:'Tax office / Mamouria (المأمورية)', type:'text'},
@@ -1529,60 +1521,27 @@ const CUSTOMER_EXTRA_FIELD_GROUPS = [
     {key:'taxFileNumber', label:'File number at tax office (رقم الملف داخل المامورية)', type:'text'},
     {key:'taxCardExpiry', label:'Tax card expiry date (تاريخ انتهاء البطاقة الضريبية)', type:'date'},
     {key:'commercialRegistry', label:'Commercial registry no. (سجل تجاري)', type:'text'},
-    {key:'commercialRegistryExpiry', label:'Commercial registry expiry (تاريخ إنتهاء مده السجل التجاري)', type:'date'},
     {key:'companyTermExpiry', label:'Company term expiry (تاريخ انتهاء مده الشركة بالسجل)', type:'date'},
     {key:'salesTaxOffice', label:'Sales tax office (مأمورية المبيعات)', type:'text'},
-    {key:'fileStatus', label:'File status (حاله الملف)', type:'text'},
-    {key:'activity', label:'Activity (النشاط)', type:'text'},
     {key:'activityStartDate', label:'Activity start date (بداية النشاط)', type:'date'},
     {key:'stopDate', label:'Stop date (تاريخ التوقف)', type:'date'},
-    {key:'projectsFund', label:'Projects fund (صندوق المشروعات)', type:'text'},
-    {key:'projectsFundExpiry', label:'Projects fund reg. expiry (تاريخ انتهاء تسجيل صندوق المشروعات)', type:'date'},
-    {key:'activityCode', label:'Activity code (كود النشاط)', type:'text'},
     {key:'activity2', label:'Activity 2 (النشاط2)', type:'text'},
-  ]},
-  { title:'Login & Portal Credentials (بيانات الدخول)', fields:[
-    {key:'gmailPassword', label:'Gmail password (p.w gmail)', type:'text'},
-    {key:'portal', label:'Portal (البوابة)', type:'text'},
-    {key:'portalLoginName', label:'Portal login name (اسم الدخول)', type:'text'},
-    {key:'portalPassword', label:'Portal password (الرقم السري-بوابه)', type:'text'},
-    {key:'oldPayrollPass', label:'Old payroll login/password (رقم سري مرتبات قديم)', type:'text'},
-    {key:'accountantCode', label:'Accountant code (كود المحاسب)', type:'text'},
   ]},
   { title:'E-Invoicing (الفواتير الإلكترونية)', fields:[
     {key:'einvUsername', label:'Username', type:'text'},
     {key:'einvPassword', label:'Password', type:'text'},
     {key:'einvPincode', label:'Pincode', type:'text'},
-    {key:'einvRegRequest', label:'E-invoice registration request (طلب التسجيل بالفواتير الإلكترونيه)', type:'text'},
   ]},
-  { title:'SAP — Payroll System (منظومة المرتبات)', fields:[
-    {key:'sapLink', label:'SAP link (لينك الساب)', type:'text'},
-    {key:'sapId', label:'ID', type:'text'},
-    {key:'sapPass', label:'PAS', type:'text'},
-  ]},
-  { title:'Periodic Works (الاعمال الدورية)', fields:[
-    {key:'vatMonthly', label:'Monthly VAT return (إقرار قيمة مضافه شهري)', type:'text'},
-    {key:'form41', label:'Form 41 (نموذج 41)', type:'text'},
-    {key:'payrollReturn', label:'Payroll return (إقرار مرتبات)', type:'text'},
-    {key:'accountsReview', label:'Accounts review (مراجعة حسابات)', type:'text'},
-    {key:'annualIncomeReturn', label:'Annual income return (إفرار دخل سنوي)', type:'text'},
-    {key:'budgetApproval', label:'Budget approval (إعتماد ميزانية)', type:'text'},
-    {key:'eInvoiceWork', label:'E-invoices (فواتير الكترونية)', type:'text'},
+  { title:'SAP', fields:[
+    {key:'sapUsername', label:'Username', type:'text'},
+    {key:'sapPassword', label:'Password', type:'text'},
+    {key:'sapEmail', label:'Email', type:'text'},
   ]},
   { title:'Tax Status Checks (موقف ضريبي)', fields:[
     {key:'generalCheck', label:'General inspection (فحص عامة)', type:'text'},
     {key:'salesCheck', label:'Sales inspection (فحص مبيعات)', type:'text'},
     {key:'profitCheck', label:'Business profit inspection (فحص كسب عمل)', type:'text'},
     {key:'stampCheck', label:'Stamp duty inspection (فحص دمغه)', type:'text'},
-  ]},
-  { title:'Completed Works (الأعمال المنتهية)', fields:[
-    {key:'vatMonthlyDone', label:'Monthly VAT return — completed (إقرار قيمة مضافه شهري)', type:'text'},
-    {key:'form41Done', label:'Form 41 — completed (نموذج 41)', type:'text'},
-    {key:'payrollReturnDone', label:'Payroll return — completed (إقرار مرتبات)', type:'text'},
-    {key:'annualReturnDone', label:'Annual return — completed (إقرار سنوي)', type:'text'},
-  ]},
-  { title:'Follow-up (المتابعه)', fields:[
-    {key:'followUp', label:'Follow-up notes (المتابعه)', type:'textarea'},
   ]},
 ];
 
@@ -1664,12 +1623,7 @@ function viewCustomerDetail(id){
       <div class="divider"></div>
       <div class="field-group-title">System (المنظومة)</div>
       <div class="detail-grid">
-        <div><div class="detail-label">System</div><div class="detail-value">${esc(SYSTEM_LABELS[c.systemType]||'None')}</div></div>
-        ${c.systemType && c.systemType!=='none' ? `
-          <div><div class="detail-label">System email</div><div class="detail-value">${esc(c.systemEmail||'—')}</div></div>
-          <div><div class="detail-label">System password</div><div class="detail-value mono" id="sysPassView" data-pass="${esc(c.systemPassword||'')}">••••••••</div></div>
-          <div style="align-self:end;"><button class="btn btn-ghost btn-sm" onclick="toggleSysPass()">Show/Hide</button></div>
-        ` : ''}
+
       </div>
       <div class="divider"></div>
       <div class="field-group-title">Assigned team</div>
@@ -1699,11 +1653,6 @@ function viewCustomerDetail(id){
     </div>
   `;
 }
-window.toggleSysPass = function(){
-  const el = $('sysPassView'); if(!el) return;
-  const isHidden = el.textContent.replace(/[•]/g,'').length===0;
-  el.textContent = isHidden ? (el.dataset.pass || '—') : '••••••••';
-};
 
 function expiryBadge(d){
   if(!d.expiryDate) return '';
@@ -1725,7 +1674,6 @@ function docRow(d){
 window.openCustomerModal = function(id){
   if(!canCreateCustomers()){ toast('You do not have permission to add customers.','err'); return; }
   const c = id ? getCustomer(id) : null;
-  const sysType = c?.systemType || 'none';
   const allEmployees = Object.values(state.users||{}).filter(u=>u.role==='employee');
   showModal(`
     <div class="modal-head"><h3>${c?'Edit customer':'New customer'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
@@ -1741,20 +1689,6 @@ window.openCustomerModal = function(id){
       </div>
       <div class="field"><label>Address</label><textarea id="cfAddress">${esc(c?.address||'')}</textarea></div>
       <div class="field"><label>Notes</label><textarea id="cfNotes">${esc(c?.notes||'')}</textarea></div>
-
-      <div class="field-group-title">System (المنظومة)</div>
-      <input type="hidden" id="cfSystemType" value="${esc(sysType)}">
-      <div class="field">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="cfSystemGroup">
-          ${SYSTEM_OPTIONS.map(opt=>`<button type="button" class="btn btn-sm ${sysType===opt.key?'btn-outline':'btn-ghost'}" data-sys-btn="${opt.key}" onclick="selectSystemType('${opt.key}')">${esc(opt.label)}</button>`).join('')}
-        </div>
-      </div>
-      <div id="cfSystemCreds" ${sysType==='none'?'hidden':''}>
-        <div class="grid-2">
-          <div class="field"><label>System email *</label><input id="cfSysEmail" value="${esc(c?.systemEmail||'')}"></div>
-          <div class="field"><label>System password *</label><input id="cfSysPass" type="text" value="${esc(c?.systemPassword||'')}"></div>
-        </div>
-      </div>
 
       <div class="field-group-title">Accounting &amp; compliance data (بيانات المحاسبة والالتزام الضريبي)</div>
       <div class="field-hint" style="margin-bottom:10px;">Optional — from the office's client master sheet. Expand a section to fill in what applies.</div>
@@ -1786,26 +1720,9 @@ window.openCustomerModal = function(id){
   `);
 };
 
-window.selectSystemType = function(key){
-  const hidden = $('cfSystemType'); if(hidden) hidden.value = key;
-  document.querySelectorAll('[data-sys-btn]').forEach(b=>{
-    b.classList.toggle('btn-outline', b.getAttribute('data-sys-btn')===key);
-    b.classList.toggle('btn-ghost', b.getAttribute('data-sys-btn')!==key);
-  });
-  const creds = $('cfSystemCreds');
-  if(creds) creds.hidden = (key==='none');
-};
-
 window.saveCustomer = async function(id){
   const name = $('cfName').value.trim();
   if(!name){ toast('Company name is required.','err'); return; }
-
-  const systemType = $('cfSystemType')?.value || 'none';
-  const sysEmail = $('cfSysEmail')?.value.trim() || '';
-  const sysPass = $('cfSysPass')?.value.trim() || '';
-  if(systemType!=='none' && (!sysEmail || !sysPass)){
-    toast('Email and password are required for the selected System.','err'); return;
-  }
 
   const employeeIds = {};
   document.querySelectorAll('.cfEmpChk').forEach(chk=>{ if(chk.checked) employeeIds[chk.value] = true; });
@@ -1820,7 +1737,6 @@ window.saveCustomer = async function(id){
     name, contactPerson:$('cfContact').value.trim(), email:$('cfEmail').value.trim(),
     phone:$('cfPhone').value.trim(), taxId:$('cfTax').value.trim(), industry:$('cfIndustry').value.trim(),
     address:$('cfAddress').value.trim(), notes:$('cfNotes').value.trim(), status:$('cfStatus').value,
-    systemType, systemEmail: systemType==='none'?'':sysEmail, systemPassword: systemType==='none'?'':sysPass,
     accountingInfo
   };
   const btn=$('cfSubmit'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving…';
@@ -2069,6 +1985,19 @@ const WORKFLOW_STEPS = [
 function taskProgress(t){ const idx=WORKFLOW_STEPS.findIndex(s=>s.key===t.status); return Math.max(0,Math.min(100,Math.round(((idx+1)/WORKFLOW_STEPS.length)*100))); }
 
 let taskFilter = 'all';
+// Recurring/periodic accounting work types (الاعمال الدورية) — moved here from
+// the customer customization form so periodic work is tracked as real tasks
+// instead of a static checklist on the customer record.
+const PERIODIC_WORK_TYPES = [
+  {key:'vatMonthly', label:'Monthly VAT return (إقرار قيمة مضافه شهري)'},
+  {key:'form41', label:'Form 41 (نموذج 41)'},
+  {key:'payrollReturn', label:'Payroll return (إقرار مرتبات)'},
+  {key:'accountsReview', label:'Accounts review (مراجعة حسابات)'},
+  {key:'annualIncomeReturn', label:'Annual income return (إفرار دخل سنوي)'},
+  {key:'budgetApproval', label:'Budget approval (إعتماد ميزانية)'},
+  {key:'eInvoiceWork', label:'E-invoices (فواتير الكترونية)'},
+];
+
 function viewTasks(){
   if(isCustomer()) return `<div class="empty-state">You don't have access to this page.</div>`;
   let list = visibleTasks().filter(t=>!t.isRequest || isAdmin() || isSubManager());
@@ -2184,6 +2113,7 @@ window.openTaskModal = function(id, presetCustomerId){
   showModal(`
     <div class="modal-head"><h3>New task</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
+      <div class="field"><label>Periodic work (الاعمال الدورية)</label><select id="tfPeriodic" onchange="applyPeriodicWorkType(this.value)"><option value="">— Custom task —</option>${PERIODIC_WORK_TYPES.map(p=>`<option value="${p.key}">${esc(p.label)}</option>`).join('')}</select><div class="field-hint">Pick a recurring work type to prefill the title below, or leave as Custom task.</div></div>
       <div class="field"><label>Title *</label><input id="tfTitle"></div>
       <div class="field"><label>Description</label><textarea id="tfDesc"></textarea></div>
       <div class="grid-2">
@@ -2196,6 +2126,12 @@ window.openTaskModal = function(id, presetCustomerId){
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="tfSubmit" onclick="createTask()">Create task</button></div>
   `);
+};
+
+window.applyPeriodicWorkType = function(key){
+  const p = PERIODIC_WORK_TYPES.find(x=>x.key===key);
+  const titleEl = $('tfTitle');
+  if(titleEl) titleEl.value = p ? p.label : '';
 };
 
 window.createTask = async function(){
