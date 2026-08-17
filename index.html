@@ -1608,7 +1608,7 @@ function viewCustomerDetail(id){
         <h2 style="margin-top:8px;">${esc(c.name)}</h2>
         <div class="topbar-sub">Login ID <span class="id-badge">#${esc(c.loginId||'—')}</span></div>
       </div>
-      <div class="topbar-actions">${statusPill(c.status)}${isAdmin()?`<button class="btn btn-outline btn-sm" onclick="openCustomerModal('${id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteCustomer('${id}')">Delete customer</button>`:''}</div>
+      <div class="topbar-actions">${statusPill(c.status)}${canCreateCustomers()?`<button class="btn btn-outline btn-sm" onclick="openCustomerModal('${id}')">Edit</button>`:''}${isAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteCustomer('${id}')">Delete customer</button>`:''}</div>
     </div>
     <div class="panel"><div class="panel-body pad">
       <div class="detail-grid">
