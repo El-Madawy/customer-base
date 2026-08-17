@@ -619,8 +619,8 @@ function isSubManager(){ return state.profile?.role === 'submanager'; }
 function isEmployee(){ return state.profile?.role === 'employee'; }
 function isCustomer(){ return state.profile?.role === 'customer'; }
 function isInternalStaff(){ return isAdmin() || isSubManager() || isEmployee(); }
-// Only Managers and Sub-Managers can create/assign tasks to Employees.
-function canAssignTasks(){ return isAdmin() || isSubManager(); }
+// Managers, Sub-Managers and Employees can all create/assign tasks.
+function canAssignTasks(){ return isAdmin() || isSubManager() || isEmployee(); }
 // Managers, Sub-Managers and Employees can all create customer records.
 function canCreateCustomers(){ return isAdmin() || isSubManager() || isEmployee(); }
 
@@ -1118,6 +1118,7 @@ function navFor(role){
   if(role==='submanager' || role==='employee') return [
     {key:'dashboard', label:'Dashboard'},
     {key:'customers', label:'Customers'},
+    {key:'employees', label:'Team'},
     {key:'tasks', label:'Tasks'},
     {key:'documents', label:'Documents'},
     {key:'reports', label:'Reports'},
@@ -1832,7 +1833,7 @@ window.deleteCustomer = async function(customerId){
    EMPLOYEES / TEAM (admin only)
    ============================================================ */
 function viewEmployees(){
-  if(!isAdmin()) return `<div class="empty-state">You don't have access to this page.</div>`;
+  if(!isInternalStaff()) return `<div class="empty-state">You don't have access to this page.</div>`;
   const list = Object.values(state.users||{}).filter(u=>u.role!=='customer');
   return `
     <div class="topbar">
@@ -1845,7 +1846,7 @@ function viewEmployees(){
         <tr class="clickable" onclick="goto('employees',{type:'user',id:'${u.uid}'})">
           <td class="mono">#${esc(u.id)}</td><td>${esc(u.name)}</td><td><span class="badge-role">${esc(roleLabel(u.role))}</span></td>
           <td>${statusPill(u.status)}</td><td>${Object.values(state.customers).filter(c=>(c.employeeIds||{})[u.uid]).length}</td>
-          <td onclick="event.stopPropagation()">${u.role!=='admin' && u.uid!==state.fbUser.uid?`<button class="btn btn-danger btn-sm" onclick="deleteAccount('${u.uid}')">Delete</button>`:''}</td>
+          <td onclick="event.stopPropagation()">${isAdmin() && u.role!=='admin' && u.uid!==state.fbUser.uid?`<button class="btn btn-danger btn-sm" onclick="deleteAccount('${u.uid}')">Delete</button>`:''}</td>
         </tr>`).join('')}</tbody>
     </table></div></div></div>
   `;
@@ -1872,9 +1873,9 @@ function viewUserDetail(uidVal){
       ${u.role!=='admin' && !isSelf ? `
         <div class="divider"></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          ${u.status==='active'?`<button class="btn btn-danger btn-sm" onclick="setUserStatus('${uidVal}','inactive')">Disable account</button>`:`<button class="btn btn-outline btn-sm" onclick="setUserStatus('${uidVal}','active')">Reactivate account</button>`}
-          <button class="btn btn-outline btn-sm" onclick="openEmployeeModal('${uidVal}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteAccount('${uidVal}')">Delete account</button>
+          ${isAdmin() ? `${u.status==='active'?`<button class="btn btn-danger btn-sm" onclick="setUserStatus('${uidVal}','inactive')">Disable account</button>`:`<button class="btn btn-outline btn-sm" onclick="setUserStatus('${uidVal}','active')">Reactivate account</button>`}` : ''}
+          ${isInternalStaff()?`<button class="btn btn-outline btn-sm" onclick="openEmployeeModal('${uidVal}')">Edit</button>`:''}
+          ${isAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteAccount('${uidVal}')">Delete account</button>`:''}
         </div>
       ` : isSelf ? `<div class="info-banner">This is your own account.</div>` : `<div class="info-banner">Manager accounts are protected from here.</div>`}
     </div></div>
@@ -1882,7 +1883,9 @@ function viewUserDetail(uidVal){
 }
 
 window.openEmployeeModal = function(uidVal){
+  if(!isInternalStaff()){ toast('You do not have permission to manage team accounts.','err'); return; }
   const u = uidVal ? getUserById(uidVal) : null;
+  if(u && u.role==='admin' && !isAdmin()){ toast('Only Managers can edit Manager accounts.','err'); return; }
   showModal(`
     <div class="modal-head"><h3>${u?'Edit account':'New team account'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
@@ -1891,7 +1894,7 @@ window.openEmployeeModal = function(uidVal){
         <div class="field"><label>Role *</label><select id="efRole" ${u?'disabled':''}>
           <option value="employee" ${!u||u?.role==='employee'?'selected':''}>Employee</option>
           <option value="submanager" ${u?.role==='submanager'?'selected':''}>Sub-Manager</option>
-          <option value="admin" ${u?.role==='admin'?'selected':''}>Manager</option>
+          ${isAdmin()?`<option value="admin" ${u?.role==='admin'?'selected':''}>Manager</option>`:''}
         </select></div>
         <div class="field"><label>Status</label><select id="efStatus"><option value="active" ${!u||u?.status==='active'?'selected':''}>Active</option><option value="inactive" ${u?.status==='inactive'?'selected':''}>Inactive</option></select></div>
       </div>
@@ -1910,12 +1913,15 @@ window.openEmployeeModal = function(uidVal){
 };
 
 window.saveEmployee = async function(uidVal){
+  if(!isInternalStaff()){ toast('You do not have permission to manage team accounts.','err'); return; }
   const name = $('efName').value.trim();
   if(!name){ toast('Full name is required.','err'); return; }
   const status = $('efStatus').value;
   const btn=$('efSubmit'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving…';
   try{
     if(uidVal){
+      const target = getUserById(uidVal);
+      if(target?.role==='admin' && !isAdmin()){ toast('Only Managers can edit Manager accounts.','err'); btn.disabled=false; btn.innerHTML='Save changes'; return; }
       await dbUpdate(dbRef(rtdb,'users/'+uidVal), { name, status });
       state.users[uidVal] = { ...state.users[uidVal], name, status };
       await pushAudit('Updated account', name);
@@ -1923,6 +1929,7 @@ window.saveEmployee = async function(uidVal){
       return;
     }
     const role = $('efRole').value;
+    if(role==='admin' && !isAdmin()){ toast('Only Managers can create Manager accounts.','err'); btn.disabled=false; btn.innerHTML='Create account'; return; }
     const loginId = ($('efLoginId').value||'').trim().toLowerCase();
     const pass = $('efPass').value;
     if(!loginId){ toast('Login ID is required.','err'); btn.disabled=false; btn.innerHTML='Create account'; return; }
@@ -2057,7 +2064,7 @@ function viewTaskDetail(id){
   const docs = Object.values(state.documents).filter(d=>d.taskId===id);
   const curIdx = WORKFLOW_STEPS.findIndex(s=>s.key===t.status);
   const isRejected = t.status==='REJECTED';
-  const canWork = isAdmin() || isSubManager() || (isEmployee() && t.assignedTo===state.fbUser.uid);
+  const canWork = isInternalStaff();
 
   return `
     <div class="topbar">
