@@ -1552,6 +1552,11 @@ const CUSTOMER_EXTRA_FIELD_GROUPS = [
     {key:'sapPassword', label:'Password', type:'text'},
     {key:'sapEmail', label:'Email', type:'text'},
   ]},
+  { title:'Old System (المنظومة القديمة)', fields:[
+    {key:'oldSystemUsername', label:'Username', type:'text'},
+    {key:'oldSystemPassword', label:'Password', type:'text'},
+    {key:'oldSystemEmail', label:'Email', type:'text'},
+  ]},
   { title:'Tax Status Checks (موقف ضريبي)', fields:[
     {key:'generalCheck', label:'General inspection (فحص عامة)', type:'text'},
     {key:'salesCheck', label:'Sales inspection (فحص مبيعات)', type:'text'},
@@ -1638,7 +1643,9 @@ function viewCustomerDetail(id){
       <div class="divider"></div>
       <div class="field-group-title">System (المنظومة)</div>
       <div class="detail-grid">
-
+        <div><div class="detail-label">Old System Username (اليوزر)</div><div class="detail-value">${esc((c.accountingInfo||{}).oldSystemUsername||'—')}</div></div>
+        <div><div class="detail-label">Old System Password (الباسورد)</div><div class="detail-value">${esc((c.accountingInfo||{}).oldSystemPassword||'—')}</div></div>
+        <div><div class="detail-label">Old System Email</div><div class="detail-value">${esc((c.accountingInfo||{}).oldSystemEmail||'—')}</div></div>
       </div>
       <div class="divider"></div>
       <div class="field-group-title">Assigned team</div>
