@@ -1587,6 +1587,24 @@ function renderCustomerExtraFields(c){
   }).join('');
 }
 
+// Read-only counterpart to renderCustomerExtraFields() — same accordion
+// groups, but for display on the customer detail page instead of an
+// editable form. Shows every field (including empty ones as "—") so
+// nothing collected on the create/edit form is ever hidden from view.
+function renderCustomerExtraFieldsReadOnly(c){
+  const data = (c && c.accountingInfo) || {};
+  return CUSTOMER_EXTRA_FIELD_GROUPS.map(g=>{
+    const filled = g.fields.filter(f=>(data[f.key]||'').toString().trim()!=='').length;
+    return `
+    <details class="cf-details">
+      <summary>${esc(g.title)}${filled?`<span class="cf-details-count">${filled} filled</span>`:''}</summary>
+      <div class="cf-details-body detail-grid">
+        ${g.fields.map(f=>`<div><div class="detail-label">${esc(f.label)}</div><div class="detail-value">${esc(f.type==='date'?fmtDate(data[f.key]):(data[f.key]||''))||'—'}</div></div>`).join('')}
+      </div>
+    </details>`;
+  }).join('');
+}
+
 function nextCustomerLoginId(){
   const nums = Object.values(state.users||{}).map(u=>u.id).filter(id=>/^C\d+$/.test(id||'')).map(id=>parseInt(id.slice(1),10));
   const next = (nums.length ? Math.max(...nums) : 0) + 1;
@@ -1641,12 +1659,8 @@ function viewCustomerDetail(id){
       </div>
       ${c.notes?`<div class="divider"></div><div class="detail-label">Notes</div><div class="detail-value">${esc(c.notes)}</div>`:''}
       <div class="divider"></div>
-      <div class="field-group-title">System (المنظومة)</div>
-      <div class="detail-grid">
-        <div><div class="detail-label">Old System Username (اليوزر)</div><div class="detail-value">${esc((c.accountingInfo||{}).oldSystemUsername||'—')}</div></div>
-        <div><div class="detail-label">Old System Password (الباسورد)</div><div class="detail-value">${esc((c.accountingInfo||{}).oldSystemPassword||'—')}</div></div>
-        <div><div class="detail-label">Old System Email</div><div class="detail-value">${esc((c.accountingInfo||{}).oldSystemEmail||'—')}</div></div>
-      </div>
+      <div class="field-group-title">Accounting & compliance (بيانات إضافية)</div>
+      ${renderCustomerExtraFieldsReadOnly(c)}
       <div class="divider"></div>
       <div class="field-group-title">Assigned team</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
