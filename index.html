@@ -773,12 +773,22 @@ window.doSignOut = async function(){ await signOut(auth); };
 /* ============================================================
    DATA LISTENERS
    ============================================================ */
+// Wraps onValue with a visible error handler — if the database rules
+// reject a read (permission-denied, etc), this used to fail completely
+// silently: the listener just never fired again and the UI quietly went
+// stale/empty. Now it surfaces a toast so it's obvious what happened.
+function onValueSafe(path, cb){
+  return onValue(dbRef(rtdb, path), cb, (err)=>{
+    console.error('DB read denied at "'+path+'":', err);
+    toast('Could not load "'+path+'": '+(err?.message||err), 'err');
+  });
+}
 function bindListeners(){
   if(state.listenersBound) return;
   state.listenersBound = true;
 
   if(isAdmin() || isSubManager() || isEmployee()){
-    onValue(dbRef(rtdb,'users'), snap=>{
+    onValueSafe('users', snap=>{
       const val = snap.val() || {};
       Object.keys(val).forEach(k=>{ val[k].uid = k; }); // DB records don't store their own uid — inject it from the key
       state.users = val; renderApp();
@@ -788,30 +798,36 @@ function bindListeners(){
   }
 
   if(isAdmin() || isSubManager() || isEmployee()){
-    onValue(dbRef(rtdb,'customers'), snap=>{ state.customers = snap.val() || {}; renderApp(); });
+    onValueSafe('customers', snap=>{ state.customers = snap.val() || {}; renderApp(); });
   } else if(isCustomer() && state.profile.customerId){
-    onValue(dbRef(rtdb,'customers/'+state.profile.customerId), snap=>{
+    onValueSafe('customers/'+state.profile.customerId, snap=>{
       state.customers = snap.exists() ? {[state.profile.customerId]: snap.val()} : {};
       renderApp();
     });
   }
 
   if(isAdmin()){
-    onValue(dbRef(rtdb,'auditLog'), snap=>{ state.auditLog = snap.val() || {}; renderApp(); });
-    onValue(dbRef(rtdb,'tasksByCustomer'), snap=>{
+    onValueSafe('auditLog', snap=>{ state.auditLog = snap.val() || {}; renderApp(); });
+  }
+
+  if(isAdmin() || isSubManager() || isEmployee()){
+    // All internal staff see every customer (see myCustomerIds()), so they
+    // all get the same full-tree listeners — no per-customer subscription
+    // needed, and no race with the customer list still loading.
+    onValueSafe('tasksByCustomer', snap=>{
       const val = snap.val() || {};
       const flat = {};
       Object.values(val).forEach(byCust=>Object.values(byCust||{}).forEach(t=>{ flat[t.id]=t; }));
       state.tasks = flat; renderApp();
     });
-    onValue(dbRef(rtdb,'documentsByCustomer'), snap=>{
+    onValueSafe('documentsByCustomer', snap=>{
       const val = snap.val() || {};
       const flat = {};
       Object.values(val).forEach(byCust=>Object.values(byCust||{}).forEach(d=>{ flat[d.id]=d; }));
       state.documents = flat; renderApp();
     });
   } else {
-    // employee or customer: subscribe per relevant customerId
+    // customer: subscribe only to their own customerId's data
     watchCustomerScopedData();
   }
 }
@@ -822,13 +838,13 @@ function watchCustomerScopedData(){
   ids.forEach(cid=>{
     if(boundCustomerNodes.has(cid)) return;
     boundCustomerNodes.add(cid);
-    onValue(dbRef(rtdb,'tasksByCustomer/'+cid), snap=>{
+    onValueSafe('tasksByCustomer/'+cid, snap=>{
       const val = snap.val() || {};
       Object.keys(state.tasks).forEach(k=>{ if(state.tasks[k].customerId===cid) delete state.tasks[k]; });
       Object.values(val).forEach(t=>{ state.tasks[t.id]=t; });
       renderApp();
     });
-    onValue(dbRef(rtdb,'documentsByCustomer/'+cid), snap=>{
+    onValueSafe('documentsByCustomer/'+cid, snap=>{
       const val = snap.val() || {};
       Object.keys(state.documents).forEach(k=>{ if(state.documents[k].customerId===cid) delete state.documents[k]; });
       Object.values(val).forEach(d=>{ state.documents[d.id]=d; });
@@ -965,7 +981,7 @@ function checkExpiries(){
 function bindNotifications(){
   if(notifUnsub) return;
   const wrap = $('notifWrap'); if(wrap) wrap.style.display = 'flex';
-  onValue(dbRef(rtdb,'notifications'), snap=>{
+  onValueSafe('notifications', snap=>{
     state.notifications = snap.val() || {};
     Object.keys(state.notifications).forEach(k=>{ state.notifications[k].id = k; });
     renderNotifBadge();
@@ -1244,7 +1260,7 @@ function viewAdminEmployeeDashboard(){
   const activeCustomers = allMyCustomers.filter(c=>c.status==='active').length;
   const openTasks = tasks.filter(t=>!['COMPLETED','APPROVED'].includes(t.status)).length;
   const completedTasks = tasks.filter(t=>['COMPLETED','APPROVED'].includes(t.status)).length;
-  const pendingDocs = docs.filter(d=>d.status==='pending').length;
+  const totalDocs = docs.length;
   const overdue = tasks.filter(t=>{ const d=toDate(t.dueDate); return d && d < new Date() && !['COMPLETED','APPROVED'].includes(t.status); }).length;
   const totalCost = tasks.reduce((s,t)=>s+Number(t.cost||0),0);
   const teamCount = Object.values(state.users||{}).filter(u=>u.role!=='customer').length;
@@ -1270,7 +1286,7 @@ function viewAdminEmployeeDashboard(){
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">${isAdmin()?'Active customers':'My customers'}</div><div class="stat-icon">${PAC_ICONS.customers}</div></div><div class="stat-value">${activeCustomers}</div></div>
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Open tasks</div><div class="stat-icon">${PAC_ICONS.briefcase}</div></div><div class="stat-value">${openTasks}</div></div>
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Completed tasks</div><div class="stat-icon teal">${PAC_ICONS.checkCircle}</div></div><div class="stat-value">${completedTasks}</div></div>
-      <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Pending documents</div><div class="stat-icon warn">${PAC_ICONS.fileClock}</div></div><div class="stat-value">${pendingDocs}</div></div>
+      <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Documents on file</div><div class="stat-icon">${PAC_ICONS.documents}</div></div><div class="stat-value">${totalDocs}</div></div>
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Overdue</div><div class="stat-icon danger">${PAC_ICONS.alertCircle}</div></div><div class="stat-value" style="color:${overdue?'var(--danger)':'var(--ink)'}">${overdue}</div></div>
       ${isAdmin()?`<div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Team members</div><div class="stat-icon">${PAC_ICONS.employees}</div></div><div class="stat-value">${teamCount}</div></div>
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Billed value</div><div class="stat-icon teal">${PAC_ICONS.wallet}</div></div><div class="stat-value" style="font-size:20px;">${formatCost(totalCost)}</div></div>
@@ -1385,7 +1401,6 @@ function viewCustomerDashboard(){
   const openTasks = myTasks.filter(t=>!['COMPLETED','APPROVED'].includes(t.status));
   const completedTasks = myTasks.filter(t=>['COMPLETED','APPROVED'].includes(t.status));
   const myDocs = Object.values(state.documents).filter(d=>d.customerId===c.id);
-  const pendingDocs = myDocs.filter(d=>d.status==='pending');
   const myRequests = myTasks.filter(t=>t.isRequest);
 
   return `
@@ -1397,7 +1412,6 @@ function viewCustomerDashboard(){
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Active tasks</div><div class="stat-icon">${PAC_ICONS.briefcase}</div></div><div class="stat-value">${openTasks.length}</div></div>
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Completed tasks</div><div class="stat-icon teal">${PAC_ICONS.checkCircle}</div></div><div class="stat-value">${completedTasks.length}</div></div>
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Documents on file</div><div class="stat-icon">${PAC_ICONS.documents}</div></div><div class="stat-value">${myDocs.length}</div></div>
-      <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">Pending review</div><div class="stat-icon warn">${PAC_ICONS.fileClock}</div></div><div class="stat-value">${pendingDocs.length}</div></div>
       <div class="stat-card"><div class="stat-top"><div class="stat-label" style="margin-bottom:0;">My requests</div><div class="stat-icon warn">${PAC_ICONS.inbox}</div></div><div class="stat-value">${myRequests.length}</div></div>
     </div>
     <div class="panel">
@@ -1668,7 +1682,7 @@ function docRow(d){
   return `<div class="doc-row">
     <div class="doc-ic">${(d.fileType||'F').slice(0,3).toUpperCase()}</div>
     <div><div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${fmtBytes(d.fileSize)} · ${esc(d.uploadedBy)} · ${fmtDate(d.uploadDate)}${d.expiryDate?` · Expires ${fmtDate(d.expiryDate)}`:''}</div></div>
-    <div class="doc-actions">${expiryBadge(d)}${statusPill(d.status)}<button class="btn btn-ghost btn-sm" onclick="openStoredDoc('${d.rtdbPath}','${esc(d.name)}')">Open</button></div>
+    <div class="doc-actions">${expiryBadge(d)}<button class="btn btn-ghost btn-sm" onclick="openStoredDoc('${d.rtdbPath}','${esc(d.name)}')">Open</button></div>
   </div>`;
 }
 
@@ -2272,39 +2286,28 @@ function viewAudit(){
 /* ============================================================
    DOCUMENTS TAB
    ============================================================ */
-let docFilter = 'all';
 function viewDocuments(){
   if(isCustomer()) return `<div class="empty-state">You don't have access to this page.</div>`;
   let list = visibleDocuments();
-  if(docFilter==='pending') list = list.filter(d=>d.status==='pending');
-  if(docFilter==='approved') list = list.filter(d=>d.status==='approved');
   list = list.slice().sort((a,b)=>(b.uploadDate||0)-(a.uploadDate||0));
   return `
     <div class="topbar">
       <div><div class="eyebrow">Files</div><h2>Documents</h2><div class="topbar-sub">${list.length} file${list.length===1?'':'s'}.</div></div>
       ${isInternalStaff() ? `<div class="topbar-actions"><button class="btn btn-primary" onclick="openCustomerDocUpload()">+ Upload document</button></div>` : ''}
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;">
-      ${[['all','All'],['pending','Pending review'],['approved','Approved']].map(([k,l])=>`
-        <button class="btn ${docFilter===k?'btn-outline':'btn-ghost'} btn-sm" onclick="setDocFilter('${k}')">${l}</button>
-      `).join('')}
-    </div>
-    <div class="panel"><div class="panel-body">${list.length===0?`<div class="empty-state">No documents match this filter.</div>`:list.map(d=>`
+    <div class="panel"><div class="panel-body">${list.length===0?`<div class="empty-state">No documents yet.</div>`:list.map(d=>`
       <div class="doc-row">
         <div class="doc-ic">${(d.fileType||'F').slice(0,3).toUpperCase()}</div>
         <div><div class="doc-name">${esc(d.name)}</div><div class="doc-meta">${esc(getCustomer(d.customerId)?.name||'—')} · ${fmtBytes(d.fileSize)} · ${esc(d.uploadedBy)} · ${fmtDate(d.uploadDate)}${d.expiryDate?` · Expires ${fmtDate(d.expiryDate)}`:''}</div></div>
         <div class="doc-actions">
           ${expiryBadge(d)}
-          ${statusPill(d.status)}
-          ${d.status==='pending' && isInternalStaff() ? `<button class="btn btn-outline btn-sm" onclick="setDocStatus('${d.id}','approved')">Approve</button><button class="btn btn-danger btn-sm" onclick="rejectAndDeleteDoc('${d.id}')">Reject &amp; delete</button>`:''}
-          ${d.status!=='pending' && isInternalStaff() ? `<button class="btn btn-ghost btn-sm" onclick="rejectAndDeleteDoc('${d.id}')" title="Delete this document">${PAC_ICONS.trash}</button>`:''}
+          ${isInternalStaff() ? `<button class="btn btn-ghost btn-sm" onclick="deleteDoc('${d.id}')" title="Delete this document">${PAC_ICONS.trash}</button>`:''}
           <button class="btn btn-ghost btn-sm" onclick="openStoredDoc('${d.rtdbPath}','${esc(d.name)}')">Open</button>
         </div>
       </div>
     `).join('')}</div></div>
   `;
 }
-window.setDocFilter = function(f){ docFilter=f; renderApp(); };
 
 // Customer-facing "My Documents" tab. Customers can now upload their own
 // files here too — staff get notified the moment they do.
@@ -2319,31 +2322,19 @@ function viewCustomerDocuments(){
     <div class="panel"><div class="panel-body">${list.length===0?`<div class="empty-state">No documents have been shared with you yet.</div>`:list.map(d=>docRow(d)).join('')}</div></div>
   `;
 }
-window.setDocStatus = async function(docId, status){
-  const d = state.documents[docId]; if(!d) return;
-  try{
-    await dbUpdate(dbRef(rtdb,`documentsByCustomer/${d.customerId}/${docId}`), { status, reviewer: state.profile.name, reviewDate: Date.now() });
-    await pushAudit(status==='approved'?'Approved document':'Rejected document', d.name);
-    if(status==='approved' && d.customerId) pushNotification('customer_'+d.customerId, `"${d.name}" was approved`, '', 'document', 'document', null);
-    toast('Document '+status+'.');
-  }catch(e){ toast('Could not update document: '+e.message,'err'); }
-};
-
-// Rejecting removes the document entirely (record + stored file), per the
-// team's workflow — a rejected upload isn't kept around, it's redone.
-window.rejectAndDeleteDoc = async function(docId){
+// Deletes a document entirely — the record and the stored file.
+window.deleteDoc = async function(docId){
   if(!isInternalStaff()) return;
   const d = state.documents[docId]; if(!d) return;
-  if(!confirm(`Delete "${d.name}"? This can't be undone — the customer will be notified.`)) return;
+  if(!confirm(`Delete "${d.name}"? This can't be undone.`)) return;
   try{
     await dbUpdate(dbRef(rtdb), {
       [`documentsByCustomer/${d.customerId}/${docId}`]: null,
       [`files/${d.customerId}/${docId}`]: null,
     });
     delete state.documents[docId];
-    await pushAudit('Rejected & deleted document', d.name);
-    if(d.customerId) pushNotification('customer_'+d.customerId, `"${d.name}" was rejected`, 'Please re-upload a corrected version.', 'document', 'document', null);
-    toast('Document rejected and removed.');
+    await pushAudit('Deleted document', d.name);
+    toast('Document deleted.');
     renderApp();
   }catch(e){ toast('Could not delete document: '+e.message,'err'); }
 };
@@ -2428,7 +2419,7 @@ window.uploadDoc = async function(taskId){
       await dbSet(dbRef(rtdb,`documentsByCustomer/${t.customerId}/${docId}`), {
         id:docId, taskId, customerId:t.customerId, name:file.name, fileType:(file.name.split('.').pop()||'file'),
         fileSize:file.size, rtdbPath, uploadedBy:state.profile.name, uploadedByUid:state.fbUser.uid,
-        uploadDate: Date.now(), status:'pending', expiryDate: expiryDate ? new Date(expiryDate).getTime() : null
+        uploadDate: Date.now(), expiryDate: expiryDate ? new Date(expiryDate).getTime() : null
       });
       await pushAudit('Uploaded task document', file.name);
     }
@@ -2455,7 +2446,7 @@ window.uploadCustomerDocs = async function(customerId){
       await dbSet(dbRef(rtdb,`documentsByCustomer/${customerId}/${docId}`), {
         id:docId, taskId:null, customerId, name:file.name, fileType:(file.name.split('.').pop()||'file'),
         fileSize:file.size, rtdbPath, uploadedBy:state.profile.name, uploadedByUid:state.fbUser.uid,
-        uploadDate: Date.now(), status:'pending', expiryDate: expiryDate ? new Date(expiryDate).getTime() : null
+        uploadDate: Date.now(), expiryDate: expiryDate ? new Date(expiryDate).getTime() : null
       });
       await pushAudit('Uploaded customer document', file.name);
     }
@@ -2484,11 +2475,11 @@ window.uploadCustomerSelfDocs = async function(){
       await dbSet(dbRef(rtdb,`documentsByCustomer/${customerId}/${docId}`), {
         id:docId, taskId:null, customerId, name:file.name, fileType:(file.name.split('.').pop()||'file'),
         fileSize:file.size, rtdbPath, uploadedBy:state.profile.name+' (customer)', uploadedByUid:state.fbUser.uid,
-        uploadDate: Date.now(), status:'pending', expiryDate:null
+        uploadDate: Date.now(), expiryDate:null
       });
       await pushAudit('Customer uploaded document', file.name);
     }
-    await pushNotification('staff', `${c.name} uploaded ${files.length} document${files.length===1?'':'s'}`, 'Ready for review.', 'document', 'document', null);
+    await pushNotification('staff', `${c.name} uploaded ${files.length} document${files.length===1?'':'s'}`, '', 'document', 'document', null);
     toast(`${files.length} file${files.length===1?'':'s'} uploaded. Our team has been notified.`);
     closeModal(); goto('c_documents');
   }catch(e){ btn.disabled=false; btn.innerHTML='Upload files'; toast('Upload failed: '+e.message, 'err'); }
